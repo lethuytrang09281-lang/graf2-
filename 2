@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карта аффилиации — Финансовое расследование</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/standalone/umd/vis-network.min.js"></script>
+    <style>
+        #network-container { width: 100%; height: calc(100vh - 64px); background-color: #0f172a; }
+        .vis-network:focus { outline: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .risk-pulse { border-left: 4px solid #ef4444; animation: pulse-red 2s infinite; }
+    </style>
+</head>
+<body class="bg-slate-900 overflow-hidden text-slate-200 font-sans">
+
+    <!-- Верхняя панель управления -->
+    <header class="bg-slate-800 border-b border-slate-700 h-16 flex items-center justify-between px-6 z-10 relative shadow-md">
+        <div class="flex items-center space-x-4">
+            <span class="font-bold text-slate-100 tracking-wider">ФОРЕНЗИК АНАЛИЗ</span>
+            <div class="h-6 w-px bg-slate-600"></div>
+            <button onclick="highlightPattern('npo')" class="text-xs bg-slate-700 hover:bg-indigo-600 text-slate-200 px-3 py-1.5 rounded transition-colors font-bold border border-slate-600">
+                🛡️ 1. Скрытые активы (НКО)
+            </button>
+            <button onclick="highlightPattern('hub')" class="text-xs bg-slate-700 hover:bg-purple-600 text-slate-200 px-3 py-1.5 rounded transition-colors font-bold border border-slate-600">
+                🕸️ 2. Мега-Хабы
+            </button>
+            <button onclick="highlightPattern('split')" class="text-xs bg-slate-700 hover:bg-orange-600 text-slate-200 px-3 py-1.5 rounded transition-colors font-bold border border-slate-600">
+                ✂️ 3. Дробление и Вывод
+            </button>
+        </div>
+        <div class="flex items-center space-x-3">
+            <input type="text" id="node-search" placeholder="Поиск (ФИО, ИНН)..." class="bg-slate-900 border border-slate-600 rounded px-4 py-1.5 text-sm text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none w-64 font-mono">
+            <button onclick="resetView()" class="bg-slate-700 text-slate-200 px-4 py-1.5 rounded text-xs font-bold hover:bg-slate-600 transition-all uppercase border border-slate-600">Сброс</button>
+        </div>
+    </header>
+
+    <main class="relative">
+        <div id="network-container"></div>
+
+        <!-- Панель с аналитическим выводом -->
+        <div id="analytic-report" class="absolute top-6 left-6 w-96 bg-slate-800/95 backdrop-blur-md shadow-2xl border border-slate-600 p-5 hidden z-20 rounded-lg">
+            <div class="flex justify-between items-start mb-2">
+                <h3 id="report-title" class="text-lg font-bold text-white uppercase tracking-wide"></h3>
+                <button onclick="closeReport()" class="text-slate-400 hover:text-white font-bold text-xl">&times;</button>
+            </div>
+            <p id="report-text" class="text-sm text-slate-300 leading-relaxed mb-4"></p>
+            <div id="report-nodes" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2"></div>
+        </div>
+
+        <!-- Сайдбар информации об узле -->
+        <div id="info-sidebar" class="absolute top-6 right-6 w-96 bg-slate-800/95 backdrop-blur-md shadow-2xl border border-slate-600 p-6 hidden z-20 overflow-y-auto max-h-[85vh] custom-scrollbar rounded-lg">
+            <button onclick="closeSidebar()" class="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-xl">&times;</button>
+            <div id="info-content"></div>
+        </div>
+    </main>
+
+    <script>
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+        const rawNodes = [
+            // --- КЛАН ЧУГУНОВЫХ ---
+            { id: 'C1', label: 'Чугунов Л. С.', group: 'person', inn: '773011485444', info: 'Бенефициар ООО "Эльтон-Мед". Контролирующее лицо ООО "Санаторий Эльтон-2".', riskPattern: ['hub', 'split'] },
+            { id: 'BA', label: 'Багрова И. А.', group: 'person', inn: '503610217620', info: 'Учредитель ООО "Эльтон-Мед" (50%). Супруга Чугунова Л.С.', riskPattern: ['split'] },
+            { id: 'CA', label: 'Чугунов А. В.', group: 'person', inn: '772829287610', info: 'Генеральный директор ООО "Эльтон-Мед" (с 12.2023). Сын Чугунова Л.С.', riskPattern: ['split'] },
+            { id: 'EM', label: 'ООО "ЭЛЬТОН-МЕД"', group: 'company', inn: '7725262133', info: 'Арендатор-выгодоприобретатель. Ответчик по иску о взыскании 42,1 млн руб.', riskPattern: ['split'] },
+            { id: 'C4', label: 'ЗАО "ПАССАЖ ОКТЯБРЬСКОЕ ПОЛЕ"', group: 'company', inn: '7734125831', riskPattern: ['hub'] },
+            { id: 'C6', label: 'ТСН "ИСТЬИНСКАЯ РЕВЬЕРА"', group: 'company', inn: '4007009680' },
+            { id: 'C7', label: 'Климешина Е. В.', group: 'person', info: 'Руководитель ТСН "Истьинская Ривьера".' },
+            { id: 'A1', label: 'Алтухов Д. Н.', group: 'person', inn: '772154125550', info: 'Историческая связь с контуром Чугунова.' },
+
+            // --- КЛАН БОГДАНОВЫХ ---
+            { id: 'B1', label: 'Богданов А. В.', group: 'responsible', inn: '344402661996', info: 'Бывший гендиректор Эльтон-2. Иск об убытках на 43,8 млн руб.', riskPattern: ['npo'] },
+            { id: 'B2', label: 'Богданова В. Д.', group: 'person', inn: '344401302306', info: 'Супруга Богданова А.В. ТСЖ "Изумруд".', riskPattern: ['npo'] },
+            { id: 'BR', label: 'Богданов Р. В.', group: 'person', inn: '344406860985', info: 'Сын Богданова А.В.' },
+            { id: 'BD1', label: 'Богданова (дочь)', group: 'person' },
+            { id: 'TS1', label: 'ТСЖ "ИЗУМРУД"', group: 'org' },
+            { id: 'B4', label: 'ООО "ТАСМ"', group: 'company' },
+            { id: 'B5', label: 'ООО "АВТОПЛЮС"', group: 'toxic', info: 'Ликвидировано.' },
+
+            // --- МЕНЕДЖМЕНТ И ЛИКВИДАТОРЫ ---
+            { id: 'K1', label: 'Колесников Г. В.', group: 'manager', inn: '344553063733', info: 'Директор ООО "Саморогда". Бывший гендиректор Эльтон-2.', riskPattern: ['split'] },
+            { id: 'S1', label: 'ООО "САМОРОГДА"', group: 'company', inn: '3443142909', info: 'Поставщик рапы. Штат: 1 чел. Инструмент вывода средств.', riskPattern: ['split'] },
+            { id: 'Z1', label: 'Захарова Е. А.', group: 'manager', inn: '344402653258', info: 'Директор Южнорусского НПЗ. Экс-директор Эльтон-2.', riskPattern: ['npo'] },
+            { id: 'MI1', label: 'Михеев С. И.', group: 'manager', inn: '344804750156', info: 'Бывший гендиректор Эльтон-2.' },
+            { id: 'L1', label: 'ООО "СОГЛАСИЕ"', group: 'toxic', info: 'Не действует. Связь: Колесников.' },
+            { id: 'L2', label: 'ООО "РИЭЛТ ЦЕНТР ВОЛГАСИТИ"', group: 'toxic', info: 'Не действует.' },
+
+            // --- БАНКРОТСТВО И АРБИТРАЖ ---
+            { id: 'E2', label: 'ООО "САНАТОРИЙ ЭЛЬТОН-2"', group: 'toxic', inn: '3423020050', info: 'Банкрот. Долг > 1 млрд. Долг по аренде: 42,1 млн руб.', riskPattern: ['split'] },
+            { id: 'K2', label: 'Харченко С. В.', group: 'official', inn: '343501325922', info: 'Конкурсный управляющий (с 25.03.2025).' },
+            { id: 'V1', label: 'ООО "КОРПОРАЦИЯ ВОЛМА"', group: 'responsible', info: 'Кредитор (162 млн руб). Выкупила долг у ФНС.' },
+            { id: 'TA1', label: 'ООО "ТАКТИКА-АУДИТ"', group: 'company' },
+
+            // --- БЛОК НПЗ ---
+            { id: 'N1', label: 'ООО "ЮЖНОРУССКИЙ НПЗ"', group: 'company', inn: '3444273118' },
+            { id: 'N2', label: 'ОАО "ЮЖНОРУССКИЙ НПЗ"', group: 'toxic', info: 'Ликвидирован.' },
+            { id: 'N3', label: 'Шмаль Г. И.', group: 'person' },
+            { id: 'N4', label: 'Мугадаев М. А.', group: 'person' },
+            { id: 'N5', label: 'Кравченко Н. В.', group: 'person' },
+            { id: 'N6', label: 'Закаев Р. Г.', group: 'person' },
+            { id: 'N7', label: 'Погосян Р. С.', group: 'person' },
+            { id: 'N8', label: 'Подгорный И. А.', group: 'person' },
+
+            // --- ХАБЫ ---
+            { id: 'P1', label: 'ПРИХОД ХРАМА АЛ. НЕВСКОГО', group: 'org', inn: '3444056096', riskPattern: ['npo'] },
+            { id: 'P2', label: 'Казанов Н. Л.', group: 'person', riskPattern: ['npo'] },
+            { id: 'MP1', label: 'АССОЦИАЦИЯ "МЕГАПИР"', group: 'org', riskPattern: ['hub'] },
+            { id: 'M2', label: 'Каншин А. А.', group: 'person', riskPattern: ['hub'] }
+        ];
+
+        const rawEdges = [
+            { from: 'C1', to: 'EM', label: 'Учредитель' },
+            { from: 'BA', to: 'EM', label: 'Учредитель' },
+            { from: 'CA', to: 'EM', label: 'Директор' },
+            { from: 'A1', to: 'EM', label: 'Связь' },
+            { from: 'C1', to: 'E2', label: 'Контроль' },
+            { from: 'E2', to: 'EM', label: 'Аренда' },
+            { from: 'C1', to: 'BA', label: 'Супруги', dashes: true },
+            { from: 'C1', to: 'CA', label: 'Отец/Сын' },
+            { from: 'B1', to: 'E2', label: 'Убытки (43.8 млн)' },
+            { from: 'B1', to: 'B2', label: 'Супруги', dashes: true },
+            { from: 'B1', to: 'BR', label: 'Отец/Сын' },
+            { from: 'B1', to: 'BD1', label: 'Отец/Дочь' },
+            { from: 'B2', to: 'TS1', label: 'Председатель' },
+            { from: 'B2', to: 'B4', label: 'Учредитель' },
+            { from: 'K2', to: 'E2', label: 'Управление' },
+            { from: 'K2', to: 'EM', label: 'Иск (42.1 млн)' },
+            { from: 'V1', to: 'E2', label: 'Кредитор' },
+            { from: 'B1', to: 'TA1', label: 'Аудит' },
+            { from: 'K1', to: 'E2', label: 'Экс-директор' },
+            { from: 'Z1', to: 'E2', label: 'Экс-директор' },
+            { from: 'MI1', to: 'E2', label: 'Экс-директор' },
+            { from: 'K1', to: 'S1', label: 'Директор' },
+            { from: 'S1', to: 'E2', label: 'Поставка рапы' },
+            { from: 'K1', to: 'L1', label: 'Ликвидатор' },
+            { from: 'N1', to: 'N3', label: 'Связь' },
+            { from: 'N1', to: 'N4', label: 'Связь' },
+            { from: 'N1', to: 'N5', label: 'Связь' },
+            { from: 'N1', to: 'N6', label: 'Связь' },
+            { from: 'N1', to: 'N7', label: 'Связь' },
+            { from: 'N1', to: 'N8', label: 'Связь' },
+            { from: 'B1', to: 'N1', label: 'Контроль' },
+            { from: 'C1', to: 'N1', label: 'Акционер' },
+            { from: 'C1', to: 'C4', label: 'Директор' },
+            { from: 'C4', to: 'MP1', label: 'Учредитель' },
+            { from: 'MP1', to: 'M2', label: 'Руководитель' },
+            { from: 'P2', to: 'P1', label: 'Настоятель' },
+            { from: 'B1', to: 'P1', label: 'Учредитель' },
+            { from: 'B2', to: 'P1', label: 'Учредитель' },
+            { from: 'Z1', to: 'P1', label: 'Связь' },
+            { from: 'C1', to: 'C6', label: 'Застройщик' },
+            { from: 'C6', to: 'C7', label: 'Управление' }
+        ];
+
+        const nodes = new vis.DataSet(rawNodes);
+        const edges = new vis.DataSet(rawEdges);
+
+        const options = {
+            nodes: { font: { size: 12, color: '#f8fafc' }, borderWidth: 2, shadow: { enabled: true, color: 'rgba(0,0,0,0.8)' } },
+            edges: { width: 1.5, color: { color: '#475569' }, arrows: { to: { enabled: true, scaleFactor: 0.5 } }, font: { size: 10, color: '#cbd5e1', strokeWidth: 0 }, smooth: true },
+            groups: {
+                person: { color: { background: '#1e293b', border: '#3b82f6' }, shape: 'dot' },
+                responsible: { color: { background: '#1e293b', border: '#ef4444' }, shape: 'dot', size: 20 },
+                manager: { color: { background: '#1e293b', border: '#f59e0b' }, shape: 'dot' },
+                company: { color: { background: '#1e293b', border: '#10b981' }, shape: 'square' },
+                toxic: { color: { background: '#1e293b', border: '#ef4444' }, shape: 'diamond', size: 25 },
+                official: { color: { background: '#1e293b', border: '#94a3b8' }, shape: 'star' },
+                org: { color: { background: '#1e293b', border: '#a855f7' }, shape: 'star' }
+            },
+            physics: { forceAtlas2Based: { gravitationalConstant: -90, springLength: 150 }, solver: 'forceAtlas2Based' },
+            interaction: { hover: true }
+        };
+
+        const container = document.getElementById('network-container');
+        const network = new vis.Network(container, { nodes, edges }, options);
+
+        network.on("stabilizationIterationsDone", function () { network.setOptions({ physics: { enabled: false } }); });
+        network.on("dragStart", function () { network.setOptions({ physics: { enabled: true } }); });
+        
+        network.on("click", (p) => { 
+            if (p.nodes.length > 0) {
+                showNodeInfo(p.nodes[0]); 
+            } else {
+                closePanels();
+            }
+        });
+
+        document.getElementById('node-search').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            if(!term) { resetView(); return; }
+            const foundArray = nodes.get({ filter: (n) => n.label.toLowerCase().includes(term) || (n.inn && n.inn.includes(term)) });
+            if (foundArray && foundArray.length > 0) { 
+                const found = foundArray[0];
+                network.focus(found.id, { scale: 1.4, animation: true }); 
+                network.selectNodes([found.id]); 
+                showNodeInfo(found.id); 
+            }
+        });
+
+        // ГЛОБАЛЬНЫЕ ФУНКЦИИ (доступны из HTML)
+        function focusOnNode(id, scale = 1.5) {
+            network.focus(id, { scale: scale, animation: true });
+            network.selectNodes([id]);
+            showNodeInfo(id);
+        }
+
+        function highlightPattern(patternType) {
+            closeSidebar();
+            
+            const allNodes = nodes.get();
+            allNodes.forEach(n => { n.color = undefined; n.hidden = false; });
+            nodes.update(allNodes);
+
+            const targetNodes = rawNodes.filter(n => n.riskPattern && n.riskPattern.includes(patternType)).map(n => n.id);
+            
+            let connectedNodes = new Set(targetNodes);
+            rawEdges.forEach(e => {
+                if (targetNodes.includes(e.from)) connectedNodes.add(e.to);
+                if (targetNodes.includes(e.to)) connectedNodes.add(e.from);
+            });
+
+            const updates = allNodes.map(n => {
+                if (!connectedNodes.has(n.id)) {
+                    return { id: n.id, color: { background: '#0f172a', border: '#1e293b' }, font: { color: '#334155' } };
+                }
+                return { id: n.id };
+            });
+            nodes.update(updates);
+
+            network.fit({ nodes: Array.from(connectedNodes), animation: true });
+            showAnalyticReport(patternType, targetNodes);
+        }
+
+        function showAnalyticReport(type, nodeIds) {
+            const report = document.getElementById('analytic-report');
+            const title = document.getElementById('report-title');
+            const text = document.getElementById('report-text');
+            const list = document.getElementById('report-nodes');
+            
+            report.classList.remove('hidden');
+            report.classList.add('risk-pulse');
+
+            let htmlList = nodeIds.map(id => {
+                const n = nodes.get(id);
+                return `<div class="bg-slate-700/80 p-2 border border-slate-600 rounded text-xs text-white mb-1 cursor-pointer hover:bg-slate-600 transition-colors" onclick="focusOnNode('${id}', 1.8)">🎯 ${n.label}</div>`;
+            }).join('');
+
+            if (type === 'npo') {
+                title.innerText = '🛡️ Укрытие в НКО';
+                text.innerHTML = 'Бенефициары коммерческих должников массово учреждают <b>Приходы и Фонды</b>. <br><br><span class="text-indigo-400 font-bold">Цель:</span> Передача активов под видом "пожертвований". Обратить взыскание на имущество религиозной организации в рамках субсидиарной ответственности почти невозможно.';
+            } else if (type === 'hub') {
+                title.innerText = '🕸️ Мега-Хабы';
+                text.innerHTML = 'Выявлена связь должников с крупными некоммерческими хабами (Ассоциация "Мегапир"). <br><br><span class="text-purple-400 font-bold">Цель:</span> Капитал уходит в хаб в виде взносов, после чего растворяется среди десятков дочерних фондов, становясь недоступным для кредиторов.';
+            } else if (type === 'split') {
+                title.innerText = '✂️ Дробление и Вывод';
+                text.innerHTML = 'Классическая схема <b>"Центр прибыли / Центр убытков"</b>. <br><br><span class="text-orange-400 font-bold">Цель:</span> Токсичные долги (аренда, налоги) сбрасываются на Эльтон-2 (банкрот), а реальная выручка оседает в Эльтон-Мед. Фиктивные затраты проводятся через прокладку "Саморогда".';
+            }
+            list.innerHTML = htmlList;
+        }
+
+        function showNodeInfo(id) {
+            const node = nodes.get(id);
+            if (!node) return;
+
+            const sidebar = document.getElementById('info-sidebar');
+            const content = document.getElementById('info-content');
+            
+            const connectedEdges = edges.get({ filter: e => e.from === id || e.to === id });
+            let linksHtml = connectedEdges.map(e => {
+                const other = nodes.get(e.from === id ? e.to : e.from);
+                return `<div class="p-3 border-b border-slate-700/50 flex flex-col hover:bg-slate-700 cursor-pointer transition-colors" onclick="focusOnNode('${other.id}', 1.5)">
+                            <span class="text-slate-400 text-xs uppercase mb-1">${e.label}</span>
+                            <span class="text-slate-200 text-sm font-bold">${other.label}</span>
+                        </div>`;
+            }).join('');
+
+            let warning = node.riskPattern ? `<div class="mt-3 p-3 bg-red-900/40 border border-red-500/50 rounded text-red-200 text-xs shadow-inner leading-relaxed">⚠️ <b>Форензик-маркер:</b> Узел возможно вовлечен в фин. операции по выводу/сокрытию активов.</div>` : '';
+
+            content.innerHTML = `
+                <div class="mb-4">
+                    <h2 class="text-xl font-bold text-white">${node.label}</h2>
+                    ${node.inn ? `<div class="text-xs font-mono bg-slate-700 text-blue-300 px-2 py-1 inline-block mt-2 rounded border border-slate-600">ИНН: ${node.inn}</div>` : ''}
+                </div>
+                <div class="text-sm text-slate-300 bg-slate-700/30 p-3 rounded mb-4 leading-relaxed border border-slate-600/50 italic">
+                    ${node.info || 'Связь подтверждена графом аффилированности.'}
+                </div>
+                ${warning}
+                <div class="mt-4 border-t border-slate-600 pt-4">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-3">Прямые связи (${connectedEdges.length})</h3>
+                    <div class="space-y-1">${linksHtml || '<span class="text-xs text-slate-500">Нет связей</span>'}</div>
+                </div>`;
+            
+            sidebar.classList.remove('hidden');
+        }
+
+        function closePanels() {
+            closeSidebar();
+            closeReport();
+        }
+
+        function closeSidebar() { 
+            document.getElementById('info-sidebar').classList.add('hidden'); 
+        }
+
+        function closeReport() { 
+            document.getElementById('analytic-report').classList.add('hidden');
+            document.getElementById('analytic-report').classList.remove('risk-pulse');
+        }
+
+        function resetView() {
+            const updates = rawNodes.map(n => ({ id: n.id, color: undefined, font: { color: '#f8fafc' } }));
+            nodes.update(updates);
+            closePanels();
+            network.fit({ animation: true });
+            document.getElementById('node-search').value = '';
+        }
+    </script>
+</body>
+</html>
