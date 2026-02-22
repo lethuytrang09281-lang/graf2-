@@ -59,6 +59,10 @@
                 <button onclick="applyFilter('nko', this)" class="nav-btn">🛡️ Хабы</button>
                 <button onclick="applyFilter('transit', this)" class="nav-btn">🔄 Транзит</button>
                 <button onclick="applyFilter('record', this)" class="nav-btn">📈 УК Рекорд</button>
+                <div class="h-6 w-px bg-white/10 mx-2"></div>
+                <button onclick="toggleOsint(this)" class="nav-btn" id="osint-toggle">🛰️ OSINT</button>
+                <button onclick="togglePivotLayout(this)" class="nav-btn" id="pivot-toggle">🎯 Pivot</button>
+                <button onclick="toggleClusterLayout(this)" class="nav-btn" id="cluster-toggle">🧲 Кластеры</button>
             </nav>
         </div>
         
@@ -105,6 +109,13 @@
             <div class="legend-item"><div class="w-4 h-0.5 bg-amber-500"></div> Долг / Заем / Цессия</div>
             <div class="legend-item"><div class="w-4 h-0.5 bg-red-500"></div> Суды / Иски</div>
             <div class="legend-item"><div class="w-4 h-0.5 bg-zinc-500 border-t border-dashed border-zinc-500" style="background:transparent; height:1px;"></div> Номинальная связь</div>
+
+            <h4 class="text-[9px] font-bold text-white uppercase tracking-widest mt-4 mb-2 opacity-80">OSINT (SpiderFoot)</h4>
+            <div class="legend-item"><div class="legend-color bg-cyan-600 rounded-full"></div> IP-адрес</div>
+            <div class="legend-item"><div class="legend-color bg-sky-600 rounded-full"></div> Домен / DNS</div>
+            <div class="legend-item"><div class="legend-color bg-indigo-600 rounded-full"></div> ASN</div>
+            <div class="legend-item"><div class="legend-color bg-teal-600 rounded-full"></div> Email</div>
+            <div class="legend-item"><div class="legend-color bg-emerald-600 rounded-full"></div> URL</div>
         </div>
 
         <!-- Карточка объекта -->
@@ -117,9 +128,10 @@
         </div>
     </main>
 
+    <script src="./sf_data_anchor_evidence.js"></script>
     <script>
         // ИСХОДНЫЕ ДАННЫЕ (Без периферии Шмаля, свободный радиальный лейаут)
-        const rawNodesData = [
+        const baseNodesData = [
             // Ядро и Бенефициары
             { id: 'SE2', label: 'ООО Санаторий\nЭльтон-2', group: 'bankrupt', info: 'ДОЛЖНИК. Аккумулятор млрд долгов.', pattern: 'core' },
             { id: 'KHAR', label: 'Харченко С. В.', group: 'official', info: 'Конкурсный управляющий.', pattern: 'core' },
@@ -264,7 +276,13 @@
             { id: 'GAZPROMBANK', label: 'Газпромбанк', group: 'company', info: 'Личные счета Чугунова Л.С. для вывода средств.', pattern: 'transit' }
         ];
 
-        const rawEdgesData = [
+        // Объединяем базовые узлы с OSINT-данными из sf_data.js
+        const rawNodesData = [
+            ...baseNodesData,
+            ...(window.rawNodesData || [])
+        ];
+
+        const baseEdgesData = [
             { from: 'CH_L', to: 'SE2', label: 'Владелец (85%)' }, { from: 'MIKHEEV', to: 'SE2', label: '15% (в прошлом)' },
             { from: 'BOGD', to: 'SE2', label: 'Экс-директор' }, { from: 'KOL', to: 'SE2', label: 'Директор' },
             { from: 'ZAKH', to: 'SE2', label: 'Номинал' }, { from: 'KHAR', to: 'SE2', label: 'Управление' },
@@ -372,6 +390,12 @@
             { from: 'CH_L', to: 'GAZPROMBANK', label: 'Личный счет' }
         ];
 
+        // Объединяем базовые рёбра с OSINT-данными из sf_data.js
+        const rawEdgesData = [
+            ...baseEdgesData,
+            ...(window.rawEdgesData || [])
+        ];
+
         // АЛГОРИТМ РАСКРАСКИ РЕБЕР (Скрываем текст с линий)
         const processedEdges = rawEdgesData.map(e => {
             let edgeColor = '#555';
@@ -388,9 +412,8 @@
 
             return {
                 ...e,
-                hiddenLabel: e.label,
-                label: undefined, 
-                title: e.label, 
+                label: undefined,
+                title: e.title || e.label,
                 width: width,
                 color: { color: edgeColor, highlight: '#fff', hover: '#fff' },
                 dashes: isDashed
@@ -412,13 +435,20 @@
                 hoverWidth: 1.5
             },
             groups: {
-                bankrupt: { color: { background: '#dc2626', border: '#991b1b', highlight: { background: '#ef4444', border: '#fff' } }, shape: 'hexagon', size: 30, font: {size: 14, bold: true} }, 
-                official: { color: { background: '#0284c7', border: '#0369a1', highlight: { background: '#0ea5e9', border: '#fff' } }, shape: 'star', size: 20 }, 
-                company:  { color: { background: '#10b981', border: '#047857', highlight: { background: '#34d399', border: '#fff' } }, shape: 'square', size: 16 }, 
-                offshore: { color: { background: '#f59e0b', border: '#b45309', highlight: { background: '#fbbf24', border: '#fff' } }, shape: 'square', size: 16 }, 
-                hub:      { color: { background: '#8b5cf6', border: '#6d28d9', highlight: { background: '#a78bfa', border: '#fff' } }, shape: 'diamond', size: 22 }, 
-                person:   { color: { background: '#3b82f6', border: '#1d4ed8', highlight: { background: '#60a5fa', border: '#fff' } }, shape: 'dot', size: 14 }, 
-                transit:  { color: { background: '#64748b', border: '#334155', highlight: { background: '#94a3b8', border: '#fff' } }, shape: 'dot', size: 8 } 
+                bankrupt: { color: { background: '#dc2626', border: '#991b1b', highlight: { background: '#ef4444', border: '#fff' } }, shape: 'hexagon', size: 30, font: {size: 14, bold: true} },
+                official: { color: { background: '#0284c7', border: '#0369a1', highlight: { background: '#0ea5e9', border: '#fff' } }, shape: 'star', size: 20 },
+                company:  { color: { background: '#10b981', border: '#047857', highlight: { background: '#34d399', border: '#fff' } }, shape: 'square', size: 16 },
+                offshore: { color: { background: '#f59e0b', border: '#b45309', highlight: { background: '#fbbf24', border: '#fff' } }, shape: 'square', size: 16 },
+                hub:      { color: { background: '#8b5cf6', border: '#6d28d9', highlight: { background: '#a78bfa', border: '#fff' } }, shape: 'diamond', size: 22 },
+                person:   { color: { background: '#3b82f6', border: '#1d4ed8', highlight: { background: '#60a5fa', border: '#fff' } }, shape: 'dot', size: 14 },
+                transit:  { color: { background: '#64748b', border: '#334155', highlight: { background: '#94a3b8', border: '#fff' } }, shape: 'dot', size: 8 },
+                // OSINT groups from SpiderFoot
+                osint_ip: { color: { background: '#0891b2', border: '#0e7490', highlight: { background: '#22d3ee', border: '#fff' } }, shape: 'dot', size: 12 },
+                osint_domain: { color: { background: '#0ea5e9', border: '#0284c7', highlight: { background: '#7dd3fc', border: '#fff' } }, shape: 'dot', size: 12 },
+                osint_email: { color: { background: '#14b8a6', border: '#0d9488', highlight: { background: '#5eead4', border: '#fff' } }, shape: 'dot', size: 12 },
+                osint_url: { color: { background: '#10b981', border: '#059669', highlight: { background: '#34d399', border: '#fff' } }, shape: 'dot', size: 12 },
+                osint_asn: { color: { background: '#6366f1', border: '#4f46e5', highlight: { background: '#a5b4fc', border: '#fff' } }, shape: 'dot', size: 12 },
+                osint_misc: { color: { background: '#78716c', border: '#57534e', highlight: { background: '#a8a29e', border: '#fff' } }, shape: 'dot', size: 10 }
             },
             physics: {
                 solver: 'repulsion',
@@ -500,6 +530,13 @@
             if(node.group === 'offshore') badgeColor = 'bg-amber-500';
             if(node.group === 'hub') badgeColor = 'bg-purple-600';
             if(node.group === 'person') badgeColor = 'bg-blue-500';
+            // OSINT groups
+            if(node.group === 'osint_ip') badgeColor = 'bg-cyan-600';
+            if(node.group === 'osint_domain') badgeColor = 'bg-sky-600';
+            if(node.group === 'osint_asn') badgeColor = 'bg-indigo-600';
+            if(node.group === 'osint_email') badgeColor = 'bg-teal-600';
+            if(node.group === 'osint_url') badgeColor = 'bg-emerald-600';
+            if(node.group === 'osint_misc') badgeColor = 'bg-stone-600';
 
             header.innerHTML = `
                 <div>
@@ -516,7 +553,7 @@
                 return `
                 <div class="p-3 bg-black/40 border border-white/5 rounded-lg mb-2 hover:border-white/20 hover:bg-black/60 cursor-pointer transition-all" onclick="focusOnNode('${otherNode.id}')">
                     <p class="text-[9px] text-zinc-500 uppercase font-bold tracking-widest mb-1 flex items-center gap-2">
-                        <span class="w-2 h-0.5 rounded-full" style="background-color: ${edgeColor}"></span> ${direction} ${e.hiddenLabel || 'Связь'}
+                        <span class="w-2 h-0.5 rounded-full" style="background-color: ${edgeColor}"></span> ${direction}
                     </p>
                     <p class="text-xs text-zinc-200 font-medium">${otherNode.label.replace('\n', ' ')}</p>
                 </div>`;
@@ -576,6 +613,218 @@
 
         function closeSidebar() { document.getElementById('info-sidebar').classList.add('hidden'); network.unselectAll(); }
         function closeReport() { document.getElementById('analytic-report').classList.add('hidden'); }
+
+        // OSINT TOGGLE
+        let osintEnabled = false;
+        function toggleOsint(btnElement) {
+            osintEnabled = !osintEnabled;
+            btnElement.classList.toggle('active-filter');
+
+            const osintGroups = ['osint_ip', 'osint_domain', 'osint_email', 'osint_url', 'osint_asn', 'osint_misc'];
+            const allNodes = nodes.get();
+            const osintNodeIds = allNodes.filter(n => osintGroups.includes(n.group)).map(n => n.id);
+            
+            console.log('OSINT toggle:', { osintEnabled, totalNodes: allNodes.length, osintNodes: osintNodeIds.length });
+
+            if (osintEnabled) {
+                // Скрываем не-OSINT узлы (уменьшаем размер и делаем прозрачными)
+                const updates = allNodes.map(n => {
+                    const isOsint = osintGroups.includes(n.group);
+                    if (isOsint) {
+                        return {
+                            id: n.id,
+                            color: { background: undefined, border: undefined },
+                            size: undefined
+                        };
+                    } else {
+                        return {
+                            id: n.id,
+                            color: { background: 'rgba(100,100,100,0.02)', border: 'rgba(100,100,100,0.02)' },
+                            size: 2
+                        };
+                    }
+                });
+                nodes.update(updates);
+
+                if (osintNodeIds.length > 0) {
+                    network.fit({ nodes: osintNodeIds, animation: { duration: 800, easingFunction: "easeInOutQuad" } });
+                }
+            } else {
+                // Возвращаем все узлы
+                const updates = allNodes.map(n => ({
+                    id: n.id,
+                    color: { background: undefined, border: undefined },
+                    size: undefined
+                }));
+                nodes.update(updates);
+                network.fit({ animation: { duration: 800, easingFunction: "easeInOutQuad" } });
+            }
+        }
+
+        // === PIVOT RADIAL LAYOUT ===
+        let pivotLayoutOn = false;
+
+        function isOsintNode(n) {
+            return (n.group || '').startsWith('osint_');
+        }
+        function isAnchor(n) {
+            return (n.info || '').toLowerCase().includes('anchor');
+        }
+        function isInfraHost(n) {
+            const lbl = (n.label || n.id || '').toLowerCase();
+            return lbl.startsWith('ns') || lbl.startsWith('mx') || lbl.startsWith('emx.') || lbl.startsWith('dns');
+        }
+
+        function placeRing(list, radius, startAngle, updates) {
+            const n = list.length || 1;
+            for (let i = 0; i < list.length; i++) {
+                const ang = startAngle + (2 * Math.PI * i) / n;
+                const x = Math.round(radius * Math.cos(ang));
+                const y = Math.round(radius * Math.sin(ang));
+                updates.push({ id: list[i].id, x, y, fixed: { x: true, y: true } });
+            }
+        }
+
+        function applyPivotRadialLayout() {
+            const os = nodes.get({ filter: n => isOsintNode(n) && !n.hidden });
+
+            const asn    = os.filter(n => n.group === 'osint_asn');
+            const ip     = os.filter(n => n.group === 'osint_ip');
+            const anchor = os.filter(n => isAnchor(n));
+            const infra  = os.filter(n => n.group === 'osint_domain' && !isAnchor(n) && isInfraHost(n));
+            const other  = os.filter(n =>
+                !asn.includes(n) && !ip.includes(n) && !anchor.includes(n) && !infra.includes(n)
+            );
+
+            const updates = [];
+
+            if (asn.length === 1) {
+                updates.push({ id: asn[0].id, x: 0, y: 0, fixed: { x: true, y: true } });
+            } else {
+                placeRing(asn, 45, 0, updates);
+            }
+
+            placeRing(ip,     150, 0.2, updates);
+            placeRing(infra,  240, 0.0, updates);
+            placeRing(other,  300, 0.1, updates);
+            placeRing(anchor, 380, 0.0, updates);
+
+            nodes.update(updates);
+            network.setOptions({ physics: { enabled: false } });
+            network.fit({ nodes: os.map(n => n.id), animation: { duration: 600, easingFunction: "easeInOutQuad" } });
+        }
+
+        function clearPivotRadialLayout() {
+            const os = nodes.get({ filter: n => isOsintNode(n) });
+            nodes.update(os.map(n => ({ id: n.id, fixed: false, x: undefined, y: undefined })));
+            network.setOptions({ physics: { enabled: true } });
+            network.stabilize(200);
+            network.fit({ animation: { duration: 600, easingFunction: "easeInOutQuad" } });
+        }
+
+        function togglePivotLayout(btn) {
+            pivotLayoutOn = !pivotLayoutOn;
+            btn.classList.toggle('active-filter', pivotLayoutOn);
+            if (pivotLayoutOn) applyPivotRadialLayout();
+            else clearPivotRadialLayout();
+        }
+
+        // === CLUSTER LAYOUT (острова вокруг MX/NS) ===
+        let clusterOn = false;
+
+        // Центры кластеров: почта + Timeweb
+        const CLUSTER_CENTERS = ["mx.yandex.net", "emx.mail.ru", "ns1.timeweb.ru"];
+        const CENTER_POS = {
+            "mx.yandex.net":  { x: -260, y: 0 },
+            "emx.mail.ru":    { x:  260, y: 0 },
+            "ns1.timeweb.ru": { x:    0, y: -240 }
+        };
+
+        function getClusterForNode(nodeId) {
+            // Определяем, к какому кластеру относится узел
+            const allEdges = edges.get();
+            const connected = allEdges.filter(e =>
+                (e.from === nodeId || e.to === nodeId) &&
+                CLUSTER_CENTERS.includes(e.from === nodeId ? e.to : e.from)
+            );
+            if (connected.length > 0) {
+                const center = connected[0].from === nodeId ? connected[0].to : connected[0].from;
+                if (CLUSTER_CENTERS.includes(center)) return center;
+            }
+            // Для самих центров
+            if (CLUSTER_CENTERS.includes(nodeId)) return nodeId;
+            return null;
+        }
+
+        function applyClusterLayout() {
+            const os = nodes.get({ filter: n => isOsintNode(n) && !n.hidden });
+            const updates = [];
+
+            // 1) Фиксируем центры
+            for (const centerId of CLUSTER_CENTERS) {
+                const centerNode = os.find(n => n.id === centerId);
+                if (centerNode && CENTER_POS[centerId]) {
+                    updates.push({
+                        id: centerId,
+                        x: CENTER_POS[centerId].x,
+                        y: CENTER_POS[centerId].y,
+                        fixed: { x: true, y: true },
+                        size: 25
+                    });
+                }
+            }
+
+            // 2) Распределяем узлы вокруг центров
+            const clusters = { "mx.yandex.net": [], "emx.mail.ru": [], "ns1.timeweb.ru": [] };
+            for (const node of os) {
+                if (CLUSTER_CENTERS.includes(node.id)) continue;
+                const cluster = getClusterForNode(node.id);
+                if (cluster && clusters[cluster]) {
+                    clusters[cluster].push(node);
+                }
+            }
+
+            // 3) Размещаем по кругу вокруг каждого центра
+            const radius = 120;
+            for (const [centerId, nodeList] of Object.entries(clusters)) {
+                if (nodeList.length === 0) continue;
+                const centerPos = CENTER_POS[centerId];
+                if (!centerPos) continue;
+
+                const startAngle = centerId === "mx.yandex.net" ? -Math.PI/2 :
+                                   centerId === "emx.mail.ru" ? Math.PI/2 : 0;
+
+                for (let i = 0; i < nodeList.length; i++) {
+                    const angle = startAngle + (2 * Math.PI * i) / nodeList.length;
+                    const x = Math.round(centerPos.x + radius * Math.cos(angle));
+                    const y = Math.round(centerPos.y + radius * Math.sin(angle));
+                    updates.push({
+                        id: nodeList[i].id,
+                        x, y,
+                        fixed: { x: true, y: true }
+                    });
+                }
+            }
+
+            nodes.update(updates);
+            network.setOptions({ physics: { enabled: false } });
+            network.fit({ animation: { duration: 600, easingFunction: "easeInOutQuad" } });
+        }
+
+        function clearClusterLayout() {
+            const os = nodes.get({ filter: n => isOsintNode(n) });
+            nodes.update(os.map(n => ({ id: n.id, fixed: false, x: undefined, y: undefined, size: undefined })));
+            network.setOptions({ physics: { enabled: true } });
+            network.stabilize(200);
+            network.fit({ animation: { duration: 600, easingFunction: "easeInOutQuad" } });
+        }
+
+        function toggleClusterLayout(btn) {
+            clusterOn = !clusterOn;
+            if (btn) btn.classList.toggle('active-filter', clusterOn);
+            if (clusterOn) applyClusterLayout();
+            else clearClusterLayout();
+        }
 
     </script>
 </body>
