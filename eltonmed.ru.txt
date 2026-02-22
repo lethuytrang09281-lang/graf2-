@@ -1,0 +1,22 @@
+"=== eltonmed.ru ===" 
+ 
+"[NS]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+eltonmed.ru	nameserver = dns1.yandex.net
+eltonmed.ru	nameserver = dns2.yandex.net
+ 
+"[MX]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+eltonmed.ru	MX preference = 10, mail exchanger = mx.yandex.net
+ 
+"[A]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+Имя:     eltonmed.ru
+Address:  5.101.152.206
+

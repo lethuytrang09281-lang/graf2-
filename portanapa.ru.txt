@@ -1,0 +1,22 @@
+"=== portanapa.ru ===" 
+ 
+"[NS]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+portanapa.ru	nameserver = ns2.hosting.reg.ru
+portanapa.ru	nameserver = ns1.hosting.reg.ru
+ 
+"[MX]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+portanapa.ru	MX preference = 10, mail exchanger = emx.mail.ru
+ 
+"[A]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+Имя:     portanapa.ru
+Address:  31.31.196.139
+

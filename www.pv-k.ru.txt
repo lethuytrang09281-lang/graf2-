@@ -1,0 +1,35 @@
+"=== www.pv-k.ru ===" 
+ 
+"[NS]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+pv-k.ru
+	primary name server = ns3-l2.nic.ru
+	responsible mail addr = info.pv-k.ru
+	serial  = 2010101125
+	refresh = 14400 (4 hours)
+	retry   = 3600 (1 hour)
+	expire  = 2592000 (30 days)
+	default TTL = 600 (10 mins)
+ 
+"[MX]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+pv-k.ru
+	primary name server = ns3-l2.nic.ru
+	responsible mail addr = info.pv-k.ru
+	serial  = 2010101125
+	refresh = 14400 (4 hours)
+	retry   = 3600 (1 hour)
+	expire  = 2592000 (30 days)
+	default TTL = 600 (10 mins)
+ 
+"[A]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+Имя:     www.pv-k.ru
+Address:  92.53.96.174
+

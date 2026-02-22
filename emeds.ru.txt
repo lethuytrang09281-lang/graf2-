@@ -1,0 +1,24 @@
+"=== emeds.ru ===" 
+ 
+"[NS]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+emeds.ru	nameserver = ns1.timeweb.ru
+emeds.ru	nameserver = ns3.timeweb.org
+emeds.ru	nameserver = ns4.timeweb.org
+emeds.ru	nameserver = ns2.timeweb.ru
+ 
+"[MX]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+emeds.ru	MX preference = 10, mail exchanger = emx.mail.ru
+ 
+"[A]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+Имя:     emeds.ru
+Address:  92.53.96.140
+

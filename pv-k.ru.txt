@@ -1,0 +1,25 @@
+"=== pv-k.ru ===" 
+ 
+"[NS]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+pv-k.ru	nameserver = ns8-l2.nic.ru
+pv-k.ru	nameserver = ns8-cloud.nic.ru
+pv-k.ru	nameserver = ns4-cloud.nic.ru
+pv-k.ru	nameserver = ns3-l2.nic.ru
+pv-k.ru	nameserver = ns4-l2.nic.ru
+ 
+"[MX]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+pv-k.ru	MX preference = 10, mail exchanger = mx.yandex.net
+ 
+"[A]:" 
+Сервер:  dns.google
+Address:  8.8.8.8
+
+Имя:     pv-k.ru
+Address:  92.53.96.174
+
