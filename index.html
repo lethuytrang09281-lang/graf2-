@@ -3,784 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forensic Graph: Elton-2 Investigation</title>
+    <title>Forensic Graph: Elton-2 Full Investigation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/standalone/umd/vis-network.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #050505; color: #fff; margin: 0; overflow: hidden; }
-        #network-container { width: 100%; height: calc(100vh - 64px); background-color: #050505; }
+        body { font-family: 'Inter', sans-serif; background-color: #000; color: #fff; margin: 0; }
+        #network-container { width: 100%; height: calc(100vh - 64px); background-color: #000; }
         .vis-network:focus { outline: none; }
-
+        
         .vercel-panel {
-            background: rgba(10, 10, 10, 0.85);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid #222;
         }
 
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #000; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 
         .nav-btn {
-            font-size: 11px; font-weight: 600; color: #888;
-            padding: 6px 14px; transition: all 0.2s; border-radius: 6px;
-            border: 1px solid transparent; background: transparent;
+            font-size: 10px; font-weight: 700; color: #555;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            padding: 8px 12px; transition: 0.2s;
         }
-        .nav-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
-        .active-filter { color: #fff; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
-
-        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #aaa; margin-bottom: 6px; }
-        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
-
-        input[type="range"] { accent-color: #3b82f6; }
+        .nav-btn:hover { color: #fff; }
+        .active-btn { color: #fff !important; border-bottom: 1px solid #fff; }
     </style>
 </head>
-<body>
+<body class="overflow-hidden">
 
-    <header class="h-16 border-b border-white/10 flex items-center justify-between px-4">
-        <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-xl font-black">E2</div>
-                <div>
-                    <h1 class="font-extrabold text-base tracking-tight">Elton-2</h1>
-                    <p class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Forensic Graph</p>
-                </div>
+    <header class="h-16 border-b border-zinc-800 flex items-center justify-between px-6 bg-black z-30 relative">
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center space-x-2">
+                <svg width="20" height="20" viewBox="0 0 76 65" fill="#fff"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z"></path></svg>
+                <span class="text-xs font-bold tracking-widest uppercase italic">Forensic Intelligence Map</span>
             </div>
-
-            <div class="h-6 w-px bg-white/10 mx-2"></div>
-
-            <nav id="filters" class="flex space-x-1">
-                <button data-analytic-filter="profit" onclick="applyFilter('profit', this)" class="nav-btn">💰 Выручка</button>
-                <button data-analytic-filter="offshore" onclick="applyFilter('offshore', this)" class="nav-btn">🌍 Офшоры</button>
-                <button data-analytic-filter="empire" onclick="applyFilter('empire', this)" class="nav-btn">🏰 Империя</button>
-                <button data-analytic-filter="nko" onclick="applyFilter('nko', this)" class="nav-btn">🛡️ Хабы</button>
-                <button data-analytic-filter="transit" onclick="applyFilter('transit', this)" class="nav-btn">🔄 Транзит</button>
-                <button data-analytic-filter="record" onclick="applyFilter('record', this)" class="nav-btn">📈 УК Рекорд</button>
-                <div class="h-6 w-px bg-white/10 mx-2"></div>
-                <button onclick="toggleOsint(this)" class="nav-btn" id="osint-toggle">🛰️ OSINT</button>
-                <button onclick="togglePivotLayout(this)" class="nav-btn" id="pivot-toggle">🎯 Pivot</button>
-                <button onclick="toggleClusterLayout(this)" class="nav-btn" id="cluster-toggle">🧲 Кластеры</button>
+            <div class="h-4 w-px bg-zinc-800"></div>
+            <nav class="flex space-x-1">
+                <button onclick="applyFilter('profit')" class="nav-btn">💰 Выручка</button>
+                <button onclick="applyFilter('offshore')" class="nav-btn">🌍 Офшоры</button>
+                <button onclick="applyFilter('empire')" class="nav-btn">🏰 Империя</button>
+                <button onclick="applyFilter('nko')" class="nav-btn">🛡️ Хабы/НКО</button>
+                <button onclick="applyFilter('transit')" class="nav-btn">🔄 Обнал/Транзит</button>
+                <button onclick="applyFilter('record')" class="nav-btn">📈 УК Рекорд</button>
             </nav>
         </div>
-
-        <div class="flex items-center space-x-3">
-            <div class="flex items-center space-x-2 bg-black border border-white/20 rounded-md px-3 py-2 hidden lg:flex">
-                <label for="springLength" class="text-[9px] text-zinc-500 uppercase tracking-widest cursor-pointer" title="Длина связей между узлами">Радиус:</label>
-                <input type="range" id="springLength" min="30" max="350" value="130" class="w-24 h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
-            </div>
-
-            <div class="relative">
-                <input type="text" id="node-search" placeholder="Поиск объекта..."
-                    class="bg-black border border-white/20 rounded-md px-4 py-2 text-xs text-white focus:border-blue-500 outline-none w-64 transition-all focus:ring-1 focus:ring-blue-500">
-            </div>
-            <button onclick="resetView()" class="bg-white text-black px-4 py-2 rounded-md text-[11px] font-bold uppercase hover:bg-zinc-200 transition-colors">Сброс</button>
+        
+        <div class="flex items-center space-x-4">
+            <input type="text" id="node-search" placeholder="Поиск (ФИО, ИНН, Директор)..." 
+                class="bg-zinc-950 border border-zinc-800 rounded px-4 py-2 text-xs text-white focus:border-zinc-500 outline-none w-72 transition-all">
+            <button onclick="resetView()" class="bg-white text-black px-4 py-2 rounded text-[10px] font-bold uppercase hover:bg-zinc-200">Сброс</button>
         </div>
     </header>
 
-    <main class="flex">
-        <aside class="w-72 border-r border-white/10 p-4 overflow-y-auto custom-scrollbar hidden lg:block">
-            <div class="vercel-panel p-4 rounded-xl mb-4">
-                <h3 class="text-[11px] font-black uppercase tracking-widest mb-3 text-white">Легенда</h3>
+    <main class="relative">
+        <div id="network-container"></div>
 
-                <h4 class="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-3 opacity-80">Типы объектов</h4>
-                <div class="legend-item"><div class="legend-color bg-red-600 rounded-full"></div> Банкрот (Должник)</div>
-                <div class="legend-item"><div class="legend-color bg-emerald-500"></div> Коммерческая компания</div>
-                <div class="legend-item"><div class="legend-color bg-amber-500"></div> Фонд / Приход</div>
-                <div class="legend-item"><div class="legend-color bg-purple-500 rounded-full"></div> Персона</div>
-                <div class="legend-item"><div class="legend-color bg-blue-500"></div> Гос. структура</div>
-                <div class="legend-item"><div class="legend-color bg-zinc-500"></div> Посредник</div>
-
-                <h4 class="text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 opacity-80">Типы связей</h4>
-                <div class="legend-item"><div class="w-4 h-0.5 bg-emerald-500"></div> Финансы / Выручка</div>
-                <div class="legend-item"><div class="w-4 h-0.5 bg-amber-500"></div> Долг / Заем / Цессия</div>
-                <div class="legend-item"><div class="w-4 h-0.5 bg-red-500"></div> Суд / Конфликт</div>
-                <div class="legend-item"><div class="w-4 h-0.5 bg-zinc-500"></div> Контроль / Управление</div>
-
-                <h4 class="text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 opacity-80">OSINT (SpiderFoot)</h4>
-                <div class="legend-item"><div class="legend-color bg-cyan-600 rounded-full"></div> IP-адрес</div>
-                <div class="legend-item"><div class="legend-color bg-sky-600 rounded-full"></div> Домен / DNS</div>
-                <div class="legend-item"><div class="legend-color bg-indigo-600 rounded-full"></div> Email</div>
-                <div class="legend-item"><div class="legend-color bg-violet-600 rounded-full"></div> URL</div>
-                <div class="legend-item"><div class="legend-color bg-blue-600 rounded-full"></div> ASN</div>
-                <div class="legend-item"><div class="legend-color bg-zinc-600 rounded-full"></div> Прочее</div>
+        <!-- Левая панель: Аналитический отчет -->
+        <div id="analytic-report" class="absolute top-6 left-6 w-96 vercel-panel p-6 hidden z-40 rounded-lg">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="report-title" class="text-[10px] font-bold text-white uppercase tracking-widest"></h3>
+                <button onclick="closeReport()" class="text-zinc-500 hover:text-white">&times;</button>
             </div>
+            <p id="report-text" class="text-xs text-zinc-400 leading-relaxed mb-4 font-light"></p>
+            <div id="report-nodes" class="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-2"></div>
+        </div>
 
-            <div class="vercel-panel p-4 rounded-xl">
-                <h3 class="text-[11px] font-black uppercase tracking-widest mb-2 text-white">Подсказки</h3>
-                <p class="text-xs text-zinc-400 leading-relaxed">
-                    • Клик по узлу — детали справа.<br>
-                    • Перетаскивание фиксирует узел.<br>
-                    • Поиск — фокус на объект.<br>
-                    • Фильтры — выделяют подсети.
-                </p>
+        <!-- Правая панель: Карточка объекта -->
+        <div id="info-sidebar" class="absolute top-6 right-6 w-96 vercel-panel hidden z-40 rounded-lg flex flex-col max-h-[85vh] overflow-hidden">
+            <div class="p-6 border-b border-zinc-800 flex justify-between items-start">
+                <div id="sidebar-header"></div>
+                <button onclick="closeSidebar()" class="text-zinc-600 hover:text-white text-xl">&times;</button>
             </div>
-        </aside>
-
-        <section class="flex-1 relative">
-            <div id="network-container"></div>
-
-            <div id="analytic-report" class="vercel-panel absolute top-4 left-4 w-80 p-4 rounded-xl hidden">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <h2 id="report-title" class="text-sm font-extrabold tracking-tight"></h2>
-                        <p id="report-text" class="text-xs text-zinc-400 mt-1"></p>
-                    </div>
-                    <button onclick="closeReport()" class="text-zinc-500 hover:text-white text-lg leading-none">×</button>
-                </div>
-                <div class="mt-3">
-                    <h3 class="text-[10px] text-zinc-500 uppercase font-black mb-2 tracking-widest">Объекты</h3>
-                    <div id="report-nodes" class="space-y-1 max-h-64 overflow-y-auto custom-scrollbar pr-1"></div>
-                </div>
-            </div>
-
-            <div id="info-sidebar" class="vercel-panel absolute top-4 right-4 w-96 p-4 rounded-xl hidden">
-                <div class="flex justify-between items-start mb-2">
-                    <div id="sidebar-header"></div>
-                    <button onclick="closeSidebar()" class="text-zinc-500 hover:text-white text-lg leading-none">×</button>
-                </div>
-                <div id="info-content" class="text-sm text-zinc-300 custom-scrollbar overflow-y-auto max-h-[70vh] pr-1"></div>
-            </div>
-        </section>
+            <div id="info-content" class="p-6 overflow-y-auto custom-scrollbar flex-1 font-light text-zinc-400 text-sm leading-relaxed"></div>
+        </div>
     </main>
 
-    <script src="sf_data.js"></script>
     <script>
-        const baseNodesData = [
-            { id: 'SE2', label: 'АО "Санаторий\\n"Ельтон-2"', group: 'bankrupt', info: 'Ключевой актив. 2024: иск о банкротстве, введено наблюдение.' },
-            { id: 'CH_L', label: 'Чугунов\\nЛ.С.', group: 'person', info: 'Контролирующее лицо (85%), бенефициар.' , pattern: 'empire'},
-            { id: 'MIKHEEV', label: 'Михеев\\nМ.С.', group: 'person', info: 'Миноритарий (15%, в прошлом).', pattern: 'empire' },
-            { id: 'KOL', label: 'Колесников\\nА.А.', group: 'person', info: 'Директор СЕ2.' },
-            { id: 'BOGD', label: 'Богданов\\nС.С.', group: 'person', info: 'Бывший директор СЕ2.' },
-            { id: 'ZAKH', label: 'Захарченко\\nД.А.', group: 'person', info: 'Номинальный владелец ряда структур.' },
-            { id: 'KHAR', label: 'Харченко\\nК.Н.', group: 'person', info: 'Управляющий/Юрист.' },
-            { id: 'EM', label: 'ООО\\n"Эльтон М"', group: 'company', info: 'Аффилированная структура. Канал вывода выручки.', pattern: 'profit' },
-            { id: 'BA_I', label: 'Багенова\\nИ.С.', group: 'person', info: 'Номинальный владелец "Эльтон М".', pattern: 'profit' },
-            { id: 'CH_A_P', label: 'Чугунов\\nА.П.', group: 'person', info: 'Экс-владелец "Эльтон М".', pattern: 'profit' },
-            { id: 'ALT', label: 'Альтман\\nИ.Д.', group: 'person', info: 'Экс-директор "Эльтон М".', pattern: 'profit' },
-            { id: 'MISYURINA', label: 'Мисюрина\\nЕ.В.', group: 'person', info: 'Директор филиала "Эльтон М".', pattern: 'profit' },
-            { id: 'CONF', label: 'БФ\\n"Согласие"', group: 'fund', info: 'Благотворительный фонд. Хаб для активов.', pattern: 'nko' },
-            { id: 'MOBRAY', label: 'ООО\\n"MOBRAY"', group: 'company', info: 'Владение: Чугунов А.П. Фиктивные займы.', pattern: 'offshore' },
-            { id: 'FINWAY', label: 'ООО\\n"Финвей"', group: 'company', info: 'Заемщик. Фиктивные займы.', pattern: 'offshore' },
-            { id: 'FZ', label: 'ООО\\n"Фамил Зет"', group: 'company', info: 'Фиктивная задолженность.', pattern: 'offshore' },
-            { id: 'FUNDUS', label: 'ООО\\n"Фундус"', group: 'company', info: 'Фиктивная задолженность.', pattern: 'offshore' },
-            { id: 'FZ_OFF', label: 'FAMILZET LTD\\n(Кипр)', group: 'intermediary', info: 'Офшорная структура. Цессия.', pattern: 'offshore' },
-            { id: 'SVAZ', label: 'ООО\\n"Связь"', group: 'company', info: 'Фиктивные займы.', pattern: 'offshore' },
-            { id: 'UGL', label: 'ООО\\n"Юглайн"', group: 'company', info: 'Фиктивная задолженность.', pattern: 'offshore' },
-            { id: 'VET', label: 'ООО\\n"ВЭТ"', group: 'company', info: 'Фиктивная задолженность.', pattern: 'offshore' },
-            { id: 'SUD', label: 'Арбитражный\\nсуд', group: 'gov', info: 'Иск о банкротстве и контрольные споры.', pattern: 'record' },
-            { id: 'SBER', label: 'Сбербанк', group: 'gov', info: 'Кредитор/счета.', pattern: 'transit' },
-            { id: 'VTB', label: 'ВТБ', group: 'gov', info: 'Кредитор/счета.', pattern: 'transit' },
-            { id: 'GPB', label: 'Газпромбанк', group: 'company', info: 'Личные счета Чугунова Л.С. для вывода средств.', pattern: 'transit' }
+        // ПОЛНЫЙ МАССИВ ДАННЫХ ИЗ ТВОЕГО ИССЛЕДОВАНИЯ
+        const rawNodes = [
+            // --- ЦЕНТРАЛЬНЫЙ УЗЕЛ ---
+            { id: 'SE2', label: 'ООО Санаторий Эльтон-2', group: 'bankrupt', info: 'ДОЛЖНИК. Аккумулятор млрд долгов. Бенефициары: Чугунов Л.С. (85%), Михеев С.И. (15%).', pattern: 'core' },
+            { id: 'KHAR', label: 'Харченко С. В.', group: 'official', info: 'Конкурсный управляющий. Взыскание убытков с Эльтон-Мед (42.1 млн руб).', pattern: 'core' },
+
+            // --- КАНАЛ 1: ВЫРУЧКА ---
+            { id: 'EM', label: 'ООО Эльтон-Мед', group: 'company', info: 'Компания-пылесос. Чистая прибыль 2024: 80.7 млн руб. Аккумулирует доходы санатория.', pattern: 'profit' },
+            { id: 'CH_L', label: 'Чугунов Л. С.', group: 'person', info: 'Мажоритарный учредитель (85%) должника. Гендиректор Эльтон-Мед.', pattern: 'empire' },
+            { id: 'BA_I', label: 'Багрова И. А.', group: 'person', info: 'Супруга Чугунова Л.С. Текущий номинальный учредитель Эльтон-Мед (100%).', pattern: 'profit' },
+            { id: 'CH_A_P', label: 'Чугунов А. В. (Племянник)', group: 'person', info: 'Бывший 100% владелец Эльтон-Мед. Владелец офшора Mobray Investments.', pattern: 'offshore' },
+            { id: 'CONF', label: 'ООО Конфетти', group: 'company', info: 'Связана через Багрову И.А.', pattern: 'profit' },
+            { id: 'ALT', label: 'Алтухов Д. Н.', group: 'person', info: 'Экс-директор Эльтон-Мед. Связи: ООО Борково, Бархат, ГПК.', pattern: 'profit' },
+
+            // --- КАНАЛ 2: ОФШОРЫ ---
+            { id: 'MOBRAY', label: 'MOBRAY INVESTMENTS (Кипр)', group: 'offshore', info: 'Владелец: Чугунов А.В. (100%). Директор: Пампина Вотси. Фиктивные займы.', pattern: 'offshore' },
+            { id: 'FINWAY', label: 'FINWAY EXPORT (Гонконг)', group: 'offshore', info: 'Директор: Стэн Горин. Фиктивная задолженность.', pattern: 'offshore' },
+            { id: 'MARSTEEL', label: 'MARSTEEL CONSOLIDATED (БВО)', group: 'offshore', info: 'Директор: Врахимис Скорди. Участие в генерации убытков.', pattern: 'offshore' },
+            { id: 'PEREYRA', label: 'PEREYRA LIMITED (БВО)', group: 'offshore', info: 'Директор: Христалла Менелау. Фиктивный цессионарий.', pattern: 'offshore' },
+            { id: 'KOL', label: 'Колесников Г. В.', group: 'person', info: 'Директор должника с 2020 г. Номинал-транзитер для офшоров.', pattern: 'offshore' },
+
+            // --- КАНАЛ 3: ИМПЕРИЯ ---
+            { id: 'NPZ', label: 'ООО Южнорусский НПЗ', group: 'company', info: 'Нефтяной бизнес семьи. Акционеры: Захарова (66.8%), Чугунов (4.5%), Шмаль (7.3%).', pattern: 'empire' },
+            { id: 'PASS', label: 'ЗАО Пассаж Октябрьское Поле', group: 'company', info: 'Ключевой хаб перекачки средств в НКО. Учредитель: Чугунов Л.С.', pattern: 'empire' },
+            { id: 'REV', label: 'ТСН Истьинская Ревьера', group: 'company', info: 'Элитный поселок. Учредители: Чугунов Л.С., Баженов А.В.', pattern: 'empire' },
+            { id: 'MED_SRV', label: 'АО КДЦ Евромедсервис', group: 'company', pattern: 'empire' },
+            { id: 'CSL', label: 'ООО Черноморские скоростные линии', group: 'company', pattern: 'empire' },
+            { id: 'SHMAL', label: 'Шмаль Г. И.', group: 'person', info: 'Связь с АО Миннефтегазстрой и ООО Энерджи Инвест.', pattern: 'empire' },
+
+            // --- КАНАЛ 4-5: НКО И ХАБЫ ---
+            { id: 'MEGAPIR', label: 'АССОЦИАЦИЯ МЕГАПИР', group: 'hub', info: 'Мега-хаб. Гендиректор: Каньшин А.А. Растворение средств в фондах.', pattern: 'nko' },
+            { id: 'CHURCH', label: 'Приход Храма Александра Невского', group: 'hub', info: 'Религиозный щит. Учредители: Богданов, Захарова, Казанов.', pattern: 'nko' },
+            { id: 'BOGD', label: 'Богданов А. В.', group: 'person', info: 'Экс-директор. Явка с повинной по фиктивным офшорным долгам.', pattern: 'nko' },
+            { id: 'ZAKH', label: 'Захарова Е. А.', group: 'person', info: 'Номинальный директор, связанный с НПЗ и Храмами.', pattern: 'nko' },
+            { id: 'ROMANOV', label: 'Комитет 400-летия Дома Романовых', group: 'hub', pattern: 'nko' },
+            { id: 'IZUMRUD', label: 'ТСЖ Изумруд', group: 'hub', info: 'Связано через Богданову В.Д.', pattern: 'nko' },
+            { id: 'SOLDIER_H', label: 'Московский дом солдатского сердца', group: 'hub', pattern: 'nko' },
+            { id: 'ARMY_CULT', label: 'МОФ Армия и культура', group: 'hub', pattern: 'nko' },
+
+            // --- КАНАЛ 6: ТРАНЗИТ И ОБНАЛ ---
+            { id: 'RECORD', label: 'УК Рекорд Капитал', group: 'company', info: 'Управление сетью транзитных прокладок.', pattern: 'record' },
+            { id: 'ANDREEV', label: 'Андреев Ю. В.', group: 'person', info: 'Куратор сети Орион, Заря, Каскад.', pattern: 'record' },
+            { id: 'IVANCH', label: 'Иванченко К. И.', group: 'person', info: 'Куратор сети Метро, Евро Сервис.', pattern: 'record' },
+            { id: 'ORION', label: 'ООО Орион', group: 'transit', pattern: 'record' },
+            { id: 'ZARYA', label: 'ООО Заря', group: 'transit', pattern: 'record' },
+            { id: 'METRO', label: 'ООО Метро', group: 'transit', pattern: 'record' },
+            { id: 'KASCAD', label: 'ООО Каскад', group: 'transit', pattern: 'record' },
+            
+            // ТРАНЗИТНЫЕ ФИЗЛИЦА (ДРОПЫ)
+            { id: 'TSAPINA', label: 'Цапина С. В.', group: 'transit', info: 'Транзитер (судебные приказы на обнал).', pattern: 'transit' },
+            { id: 'LUEVA', label: 'Луева И. П.', group: 'transit', pattern: 'transit' },
+            { id: 'FROLOV', label: 'Фролов Л. И.', group: 'transit', pattern: 'transit' },
+            { id: 'SOLOMATINA', label: 'Соломатина Т. П.', group: 'person', info: 'Главбух. Снятие наличности через банкоматы.', pattern: 'transit' },
+            
+            // ИП
+            { id: 'IP_BIT', label: 'ИП Битюков Е.И.', group: 'transit', pattern: 'transit' },
+            { id: 'IP_SUL', label: 'ИП Суламанидзе Г.Д.', group: 'transit', pattern: 'transit' }
         ];
 
-        const rawNodesData = [
-            ...baseNodesData,
-            ...(window.rawNodesData || [])
+        const rawEdges = [
+            { from: 'CH_L', to: 'SE2', label: 'Контроль (85%)' },
+            { from: 'SE2', to: 'EM', label: 'Вывод выручки' },
+            { from: 'BA_I', to: 'EM', label: 'Номинал' },
+            { from: 'CH_A_P', to: 'EM', label: 'Экс-владелец' },
+            { from: 'SE2', to: 'MOBRAY', label: 'Фиктивный заем' },
+            { from: 'CH_A_P', to: 'MOBRAY', label: 'Владелец 100%' },
+            { from: 'SE2', to: 'FINWAY', label: 'Фиктивный заем' },
+            { from: 'KOL', to: 'FINWAY', label: 'Цессия' },
+            { from: 'KHAR', to: 'SE2', label: 'Управление' },
+            { from: 'KHAR', to: 'EM', label: 'Иск (42.1 млн)' },
+            { from: 'CH_L', to: 'PASS', label: 'Учредитель' },
+            { from: 'PASS', to: 'MEGAPIR', label: 'Финансирование' },
+            { from: 'BOGD', to: 'CHURCH', label: 'Учредитель' },
+            { from: 'ZAKH', to: 'CHURCH', label: 'Учредитель' },
+            { from: 'ZAKH', to: 'NPZ', label: 'Акционер' },
+            { from: 'CH_L', to: 'NPZ', label: 'Акционер' },
+            { from: 'CH_L', to: 'REV', label: 'Учредитель' },
+            { from: 'SE2', to: 'TSAPINA', label: 'Судебный приказ' },
+            { from: 'SE2', to: 'SOLOMATINA', label: 'Обнал' },
+            { from: 'RECORD', to: 'ANDREEV', label: 'Управление' },
+            { from: 'ANDREEV', to: 'ORION', label: 'Контроль' },
+            { from: 'ANDREEV', to: 'ZARYA', label: 'Контроль' },
+            { from: 'RECORD', to: 'IVANCH', label: 'Управление' },
+            { from: 'IVANCH', to: 'METRO', label: 'Контроль' }
         ];
 
-        const baseEdgesData = [
-            { from: 'CH_L', to: 'SE2', label: 'Владелец (85%)' }, { from: 'MIKHEEV', to: 'SE2', label: '15% (в прошлом)' },
-            { from: 'BOGD', to: 'SE2', label: 'Экс-директор' }, { from: 'KOL', to: 'SE2', label: 'Директор' },
-            { from: 'ZAKH', to: 'SE2', label: 'Номинал' }, { from: 'KHAR', to: 'SE2', label: 'Управление' },
-            { from: 'SE2', to: 'EM', label: 'Вывод выручки' }, { from: 'CH_L', to: 'EM', label: 'Гендиректор' },
-            { from: 'BA_I', to: 'EM', label: 'Номинал (100%)' }, { from: 'CH_A_P', to: 'EM', label: 'Экс-владелец' },
-            { from: 'ALT', to: 'EM', label: 'Экс-директор' }, { from: 'MISYURINA', to: 'EM', label: 'Директор фил.' },
-            { from: 'BA_I', to: 'CONF', label: 'Учредитель' }, { from: 'KHAR', to: 'EM', label: 'Взыскание убытков' },
-            { from: 'CH_L', to: 'BA_I', label: 'Супруг' }, { from: 'SE2', to: 'MOBRAY', label: 'Фиктивный заем' },
-            { from: 'CH_A_P', to: 'MOBRAY', label: 'Владелец' }, { from: 'SE2', to: 'FINWAY', label: 'Фиктивный заем' },
-
-            { from: 'SE2', to: 'FZ', label: 'Фиктивный заем' }, { from: 'SE2', to: 'FUNDUS', label: 'Фиктивный заем' },
-            { from: 'FZ', to: 'FZ_OFF', label: 'Цессия долга' }, { from: 'FZ_OFF', to: 'SE2', label: 'Иск (долг)' },
-
-            { from: 'SE2', to: 'SVAZ', label: 'Фиктивный заем' }, { from: 'SE2', to: 'UGL', label: 'Фиктивный заем' },
-            { from: 'SE2', to: 'VET', label: 'Фиктивный заем' },
-
-            { from: 'SUD', to: 'SE2', label: 'Банкротство' }, { from: 'SUD', to: 'EM', label: 'Субсидиарка' },
-
-            { from: 'SE2', to: 'SBER', label: 'Счет' }, { from: 'SE2', to: 'VTB', label: 'Счет' }, { from: 'SE2', to: 'GPB', label: 'Счет' }
-        ];
-
-        const rawEdgesData = [
-            ...baseEdgesData,
-            ...(window.rawEdgesData || [])
-        ];
-
-        // АЛГОРИТМ РАСКРАСКИ РЕБЕР (Скрываем текст с линий)
-        const processedEdges = rawEdgesData.map((e, idx) => {
-            const edgeId = e.id ?? `e_${idx}`;
-            let edgeColor = '#555';
-            let width = 1.2;
-            let isDashed = false;
-            const lbl = (e.label || '').toLowerCase();
-
-            if (lbl.includes('выруч') || lbl.includes('финанс') || lbl.includes('обнал') || lbl.includes('налич') || lbl.includes('счет') || lbl.includes('транзакц') || lbl.includes('вывод') || lbl.includes('плательщик')) { edgeColor = '#10b981'; width = 2.5; }
-            else if (lbl.includes('заем') || lbl.includes('долг') || lbl.includes('цесс') || lbl.includes('баз') || lbl.includes('расчет') || lbl.includes('уступка')) { edgeColor = '#f59e0b'; width = 2; }
-            else if (lbl.includes('суд') || lbl.includes('иск') || lbl.includes('взыскан') || lbl.includes('кредитор') || lbl.includes('проверка') || lbl.includes('юрист') || lbl.includes('судья')) { edgeColor = '#ef4444'; width = 2; }
-
-            if (lbl.includes('номи') || lbl.includes('фикт') || lbl.includes('прошлом')) { isDashed = true; }
-
-            return {
-                ...e,
-                id: edgeId,
-                label: undefined,
-                title: e.title || e.label,
-                width: width,
-                color: { color: edgeColor, highlight: '#fff', hover: '#fff' },
-                dashes: isDashed
-            };
-        });
-
-        const nodes = new vis.DataSet(rawNodesData);
-        const edges = new vis.DataSet(processedEdges);
+        const nodes = new vis.DataSet(rawNodes);
+        const edges = new vis.DataSet(rawEdges);
 
         const options = {
             nodes: {
-                font: { size: 12, face: 'Inter', color: '#fff', strokeWidth: 4, strokeColor: '#000', multi: 'html' },
-                borderWidth: 2, borderWidthSelected: 4,
-                shadow: { enabled: true, color: 'rgba(0,0,0,0.8)', size: 10, x: 2, y: 2 }
+                font: { size: 10, face: 'Inter', color: '#999' },
+                borderWidth: 1.5,
+                shadow: false
             },
             edges: {
-                smooth: { type: 'continuous', forceDirection: 'none' },
-                arrows: { to: { enabled: true, scaleFactor: 0.5 } },
-                hoverWidth: 1.5
+                width: 0.8,
+                color: { color: '#222', highlight: '#fff' },
+                arrows: { to: { enabled: true, scaleFactor: 0.3 } },
+                font: { size: 8, face: 'Inter', color: '#444', strokeWidth: 0 },
+                smooth: { type: 'continuous' }
             },
             groups: {
-                bankrupt: { color: { background: '#dc2626', border: '#ef4444' }, shape: 'box', font: { size: 15, bold: true } },
-                company: { color: { background: '#059669', border: '#10b981' }, shape: 'box' },
-                fund: { color: { background: '#d97706', border: '#f59e0b' }, shape: 'box' },
-                person: { color: { background: '#7c3aed', border: '#a78bfa' }, shape: 'circle' },
-                gov: { color: { background: '#2563eb', border: '#60a5fa' }, shape: 'box' },
-                intermediary: { color: { background: '#52525b', border: '#a1a1aa' }, shape: 'box' },
-
-                osint_ip: { color: { background: '#0891b2', border: '#22d3ee' }, shape: 'circle' },
-                osint_domain: { color: { background: '#0284c7', border: '#38bdf8' }, shape: 'circle' },
-                osint_email: { color: { background: '#4f46e5', border: '#818cf8' }, shape: 'circle' },
-                osint_url: { color: { background: '#7c3aed', border: '#a78bfa' }, shape: 'circle' },
-                osint_asn: { color: { background: '#2563eb', border: '#60a5fa' }, shape: 'circle' },
-                osint_misc: { color: { background: '#52525b', border: '#a1a1aa' }, shape: 'circle' }
+                bankrupt: { color: { background: '#000', border: '#ff4d4d' }, shape: 'diamond', size: 16 },
+                hub: { color: { background: '#000', border: '#7928ca' }, shape: 'star', size: 18 },
+                official: { color: { background: '#000', border: '#0070f3' }, shape: 'star', size: 15 },
+                company: { color: { background: '#000', border: '#444' }, shape: 'square', size: 12 },
+                offshore: { color: { background: '#000', border: '#444' }, shape: 'square', size: 12 },
+                person: { color: { background: '#000', border: '#444' }, shape: 'dot', size: 10 },
+                transit: { color: { background: '#000', border: '#444' }, shape: 'dot', size: 8 }
             },
             physics: {
-                enabled: true,
+                forceAtlas2Based: { gravitationalConstant: -50, springLength: 150 },
                 solver: 'forceAtlas2Based',
-                forceAtlas2Based: { gravitationalConstant: -60, centralGravity: 0.01, springLength: 130, springConstant: 0.03 },
-                stabilization: { iterations: 150 }
+                stabilization: { iterations: 100 }
             },
-            interaction: { hover: true, tooltipDelay: 120 }
+            interaction: { hover: true }
         };
 
-        const container = document.getElementById('network-container');
-        const data = { nodes: nodes, edges: edges };
-        const network = new vis.Network(container, data, options);
+        const network = new vis.Network(document.getElementById('network-container'), { nodes, edges }, options);
 
-        // Управление радиусом (springLength)
-        document.getElementById('springLength').addEventListener('input', (e) => {
-            const len = parseInt(e.target.value, 10);
-            network.setOptions({ physics: { forceAtlas2Based: { springLength: len } } });
-            network.stabilize(50);
-        });
-
-        // DRAG: фиксируем перетянутый узел
-        network.on("dragEnd", params => {
-            if (params.nodes.length > 0) {
-                nodes.update(params.nodes.map(id => ({ id: id, fixed: true })));
-            }
-        });
-
-        // ПОИСК УЗЛА
+        // Поиск
         document.getElementById('node-search').addEventListener('input', (e) => {
-            const val = (e.target.value || '').toLowerCase().trim();
-            if (val.length < 2) {
-                if (val.length === 0) resetView();
-                return;
+            const val = e.target.value.toLowerCase();
+            if (val.length < 2) return;
+            const found = rawNodes.find(n => n.label.toLowerCase().includes(val) || (n.inn && n.inn.includes(val)));
+            if (found) {
+                network.focus(found.id, { scale: 1.4, animation: true });
+                network.selectNodes([found.id]);
+                showNodeInfo(found.id);
             }
-
-            const found = rawNodesData.find(n => {
-                const label = (n.label || n.id || '').toLowerCase();
-                const info = (n.info || '').toLowerCase();
-                return label.includes(val) || info.includes(val);
-            });
-
-            if (!found) return;
-
-            if (currentAnalyticFilter) clearAnalyticFilter({ fit: false });
-
-            network.focus(found.id, { scale: 1.2, animation: true });
-            network.selectNodes([found.id]);
-            showNodeInfo(found.id);
-        });
-
-        // КЛИК
-        network.on("click", e => {
-            if (e.nodes.length > 0) {
-                showNodeInfo(e.nodes[0]);
-                return;
-            }
-
-            closeSidebar();
-
-            // Клик по пустому месту: снимаем только аналитический фильтр, не ломая OSINT/layout-тогглы.
-            if (currentAnalyticFilter) clearAnalyticFilter({ fit: true });
         });
 
         function showNodeInfo(id) {
-            const node = nodes.get(id); if(!node) return;
-            const sidebar = document.getElementById('info-sidebar'), header = document.getElementById('sidebar-header'), content = document.getElementById('info-content');
+            const node = nodes.get(id);
+            const sidebar = document.getElementById('info-sidebar');
+            const header = document.getElementById('sidebar-header');
+            const content = document.getElementById('info-content');
 
-            let badgeColor = 'bg-zinc-600';
-            if(node.group === 'bankrupt') badgeColor = 'bg-red-600';
-            if(node.group === 'company') badgeColor = 'bg-emerald-600';
-            if(node.group === 'fund') badgeColor = 'bg-amber-600';
-            if(node.group === 'person') badgeColor = 'bg-purple-600';
-            if(node.group === 'gov') badgeColor = 'bg-blue-600';
-            if(node.group === 'intermediary') badgeColor = 'bg-zinc-500';
-            if((node.group || '').startsWith('osint_')) badgeColor = 'bg-cyan-700';
-
-            header.innerHTML = `
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${badgeColor}">${node.group || 'node'}</span>
-                        <span class="text-xs text-zinc-500 font-semibold">${node.id}</span>
-                    </div>
-                    <h2 class="text-lg font-extrabold tracking-tight mt-2">${(node.label || node.id || '').replaceAll('\n','<br>')}</h2>
-                </div>
-            `;
+            header.innerHTML = `<h2 class="text-xs font-bold text-white uppercase tracking-widest">${node.label}</h2>
+                                ${node.inn ? `<p class="text-[9px] text-zinc-600 mt-1 uppercase">ИНН: ${node.inn}</p>` : ''}`;
 
             const connected = edges.get({ filter: e => e.from === id || e.to === id });
             const links = connected.map(e => {
-                const otherId = e.from === id ? e.to : e.from;
-                const other = nodes.get(otherId);
-                const lbl = e.title || '';
-                return `<div class="p-2 bg-black/40 border border-white/5 rounded-lg text-xs text-zinc-300 hover:bg-white/10 hover:text-white cursor-pointer transition-colors" onclick="focusOnNode('${otherId}')">
-                    <div class="font-semibold">${(other?.label || otherId || '').replaceAll('\n',' ')}</div>
-                    <div class="text-[10px] text-zinc-500">${lbl}</div>
+                const other = nodes.get(e.from === id ? e.to : e.from);
+                return `<div class="p-3 bg-zinc-950 border border-zinc-900 rounded mb-2 hover:border-zinc-700 cursor-pointer" onclick="focusOnNode('${other.id}')">
+                    <p class="text-[8px] text-zinc-600 uppercase font-bold tracking-tighter">${e.label}</p>
+                    <p class="text-[13px] text-zinc-300 mt-1">${other.label}</p>
                 </div>`;
             }).join('');
 
             content.innerHTML = `
-                <div class="mb-4">
-                    <h3 class="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2">Описание</h3>
-                    <p class="text-sm text-zinc-300 leading-relaxed">${node.info || '—'}</p>
+                <div class="mb-6 p-4 bg-zinc-950 border border-zinc-900 rounded-lg">
+                    <p class="text-[10px] text-zinc-500 uppercase font-black mb-2 tracking-widest italic">Форензик-справка</p>
+                    <p class="text-xs text-zinc-400 leading-relaxed font-light">${node.info || 'Объект идентифицирован в ходе анализа аффилированности.'}</p>
                 </div>
-                <h3 class="text-[10px] text-zinc-500 uppercase font-black mb-3 tracking-widest">Связи объекта (${connected.length})</h3>
-                <div class="space-y-1">${links}</div>
+                <h3 class="text-[9px] text-zinc-600 uppercase font-black mb-4 tracking-widest">Установленные связи</h3>
+                <div>${links || '<p class="text-zinc-700 text-xs">Прямые связи в текущем слое не найдены.</p>'}</div>
             `;
             sidebar.classList.remove('hidden');
         }
 
+        function applyFilter(type) {
+            closeSidebar();
+            const report = document.getElementById('analytic-report');
+            const title = document.getElementById('report-title');
+            const text = document.getElementById('report-text');
+            const list = document.getElementById('report-nodes');
+
+            report.classList.remove('hidden');
+            const targetNodes = rawNodes.filter(n => n.pattern === type || n.id === 'SE2');
+            
+            nodes.update(rawNodes.map(n => ({
+                id: n.id,
+                opacity: targetNodes.some(tn => tn.id === n.id) ? 1 : 0.05,
+                font: { color: targetNodes.some(tn => tn.id === n.id) ? '#fff' : 'transparent' }
+            })));
+
+            if (type === 'profit') {
+                title.innerText = 'Канал 1: Захват выручки';
+                text.innerText = 'Схема аккумулирования прибыли санатория на ООО Эльтон-Мед и ООО Конфетти.';
+            } else if (type === 'offshore') {
+                title.innerText = 'Канал 2: Офшорная сеть';
+                text.innerText = 'Генерация фиктивной задолженности перед Кипром и Гонконгом для вывода валюты.';
+            } else if (type === 'empire') {
+                title.innerText = 'Канал 3: Империя Чугунова';
+                text.innerText = 'Концентрация капитала в твердых активах: НПЗ, Евромедсервис, Истьинская ревьера.';
+            } else if (type === 'nko') {
+                title.innerText = 'Канал 4-5: НКО и Хабы';
+                text.innerText = 'Скрытие активов в фондах Мегапир и религиозных приходах для защиты от взыскания.';
+            } else if (type === 'transit') {
+                title.innerText = 'Канал 6: Обнал и транзит';
+                text.innerText = 'Вывод наличности через судебные приказы и физлиц-дропов (Цапина, Луева и др).';
+            } else if (type === 'record') {
+                title.innerText = 'УК Рекорд Капитал';
+                text.innerText = 'Сетевая инфраструктура управления техническими компаниями-прокладками.';
+            }
+
+            list.innerHTML = targetNodes.filter(n => n.id !== 'SE2').map(n => `
+                <div class="p-2.5 bg-zinc-900 border border-zinc-800 rounded text-[11px] text-zinc-300 hover:text-white cursor-pointer" onclick="focusOnNode('${n.id}')">
+                    ${n.label}
+                </div>
+            `).join('');
+
+            network.fit({ nodes: targetNodes.map(n => n.id), animation: true });
+        }
+
         function focusOnNode(id) {
-            network.focus(id, { scale: 1.2, animation: true });
+            network.focus(id, { scale: 1.4, animation: true });
             network.selectNodes([id]);
             showNodeInfo(id);
         }
 
-        const ANALYTIC_TITLES = {
-            profit: 'Канал: Захват выручки',
-            offshore: 'Канал: Офшорная сеть',
-            empire: 'Империя Чугунова',
-            nko: 'Канал: НКО и Хабы',
-            transit: 'Обнал и Транзит',
-            record: 'УК Рекорд Капитал'
-        };
-
-        const ANALYTIC_TEXTS = {
-            profit: 'Аккумулирование прибыли санатория.',
-            offshore: 'Генерация фиктивной задолженности.',
-            empire: 'Активы (НПЗ, поселки, медцентры).',
-            nko: 'Скрытие активов в фондах и приходах.',
-            transit: 'Вывод наличности через дропов.',
-            record: 'Управление транзитными компаниями.'
-        };
-
-        let currentAnalyticFilter = null;
-
-        function getAnalyticButtons() {
-            return document.querySelectorAll('[data-analytic-filter]');
-        }
-
-        function setActiveAnalyticButton(type) {
-            getAnalyticButtons().forEach(b => b.classList.remove('active-filter'));
-            if (!type) return;
-            const btn = document.querySelector(`[data-analytic-filter="${type}"]`);
-            if (btn) btn.classList.add('active-filter');
-        }
-
-        function setToggleActive(id, active) {
-            const el = document.getElementById(id);
-            if (el) el.classList.toggle('active-filter', active);
-        }
-
-        function updateEdgeVisibilityFromNodes() {
-            const hiddenById = new Map(nodes.get().map(n => [n.id, !!n.hidden]));
-            const edgeUpdates = edges.get().map(e => ({
-                id: e.id,
-                hidden: !!hiddenById.get(e.from) || !!hiddenById.get(e.to)
-            }));
-            edges.update(edgeUpdates);
-        }
-
-        function showOnlyNodes(visibleIds) {
-            const visible = new Set(visibleIds);
-            nodes.update(rawNodesData.map(n => ({
-                id: n.id,
-                hidden: !visible.has(n.id),
-                fixed: false,
-                x: undefined,
-                y: undefined,
-                font: { color: '#fff', strokeColor: '#000' }
-            })));
-            updateEdgeVisibilityFromNodes();
-        }
-
-        function showAllNodesAndEdges() {
-            nodes.update(rawNodesData.map(n => ({
-                id: n.id,
-                hidden: false,
-                fixed: false,
-                x: undefined,
-                y: undefined,
-                font: { color: '#fff', strokeColor: '#000' }
-            })));
-            edges.update(processedEdges.map(e => ({ id: e.id, hidden: false })));
-        }
-
-        function clearAnalyticFilter({ fit = true } = {}) {
-            if (!currentAnalyticFilter && document.getElementById('analytic-report').classList.contains('hidden')) return;
-            currentAnalyticFilter = null;
-            setActiveAnalyticButton(null);
-            showAllNodesAndEdges();
-            closeReport();
-            if (fit) network.fit({ animation: { duration: 800, easingFunction: "easeInOutQuad" } });
-        }
-
-        function disableOsint({ fit = false } = {}) {
-            if (!osintEnabled) return;
-            osintEnabled = false;
-            setToggleActive('osint-toggle', false);
-
-            const allNodes = nodes.get();
-            const updates = allNodes.map(n => ({
-                id: n.id,
-                color: { background: undefined, border: undefined },
-                size: undefined
-            }));
-            nodes.update(updates);
-
-            if (fit) network.fit({ animation: { duration: 800, easingFunction: "easeInOutQuad" } });
-        }
-
-        function disableLayouts() {
-            if (pivotLayoutOn) {
-                pivotLayoutOn = false;
-                setToggleActive('pivot-toggle', false);
-                clearPivotRadialLayout();
-            }
-            if (clusterOn) {
-                clusterOn = false;
-                setToggleActive('cluster-toggle', false);
-                clearClusterLayout();
-            }
-        }
-
-        function applyFilter(type, btnElement) {
-            closeSidebar();
-
-            // Не смешиваем режимы: аналитический фильтр = чистый граф без OSINT/layout.
-            disableOsint({ fit: false });
-            disableLayouts();
-
-            currentAnalyticFilter = type;
-            setActiveAnalyticButton(type);
-
-            const report = document.getElementById('analytic-report');
-            const targetNodes = rawNodesData.filter(n => n.pattern === type || n.id === 'SE2');
-            const targetIds = targetNodes.map(n => n.id);
-
-            showOnlyNodes(targetIds);
-
-            network.fit({ nodes: targetIds, animation: { duration: 800, easingFunction: "easeInOutQuad" } });
-
-            report.classList.remove('hidden');
-            document.getElementById('report-title').innerText = ANALYTIC_TITLES[type] || '';
-            document.getElementById('report-text').innerText = ANALYTIC_TEXTS[type] || '';
-            document.getElementById('report-nodes').innerHTML = targetNodes
-                .filter(n => n.id !== 'SE2')
-                .map(n => {
-                    const label = (n.label || n.id || '').replaceAll('\n', ' ');
-                    return `<div class="p-2.5 bg-black/40 border border-white/5 rounded-lg text-[10px] text-zinc-300 font-medium hover:bg-white/10 hover:text-white cursor-pointer transition-colors" onclick="focusOnNode('${n.id}')">${label}</div>`;
-                })
-                .join('');
-        }
-
         function resetView() {
-            resetState();
+            nodes.update(rawNodes.map(n => ({ id: n.id, opacity: 1, font: { color: '#999' } })));
+            closeReport(); closeSidebar();
+            network.fit({ animation: true });
         }
 
-        function resetState() {
-            currentAnalyticFilter = null;
-            setActiveAnalyticButton(null);
-
-            closeReport();
-            closeSidebar();
-
-            osintEnabled = false;
-            pivotLayoutOn = false;
-            clusterOn = false;
-
-            setToggleActive('osint-toggle', false);
-            setToggleActive('pivot-toggle', false);
-            setToggleActive('cluster-toggle', false);
-
-            const search = document.getElementById('node-search');
-            if (search) search.value = '';
-
-            // Полный откат к базовым данным, чтобы убрать любые временные стили/скрытия.
-            nodes.clear();
-            edges.clear();
-            nodes.add(rawNodesData.map(n => ({ ...n, hidden: false, fixed: false, x: undefined, y: undefined })));
-            edges.add(processedEdges.map(e => ({ ...e, hidden: false })));
-
-            network.setOptions({ physics: { enabled: true } });
-            network.startSimulation();
-            network.fit({ animation: { duration: 800, easingFunction: "easeInOutQuad" } });
-        }
-
-        function closeSidebar() { document.getElementById('info-sidebar').classList.add('hidden'); network.unselectAll(); }
+        function closeSidebar() { document.getElementById('info-sidebar').classList.add('hidden'); }
         function closeReport() { document.getElementById('analytic-report').classList.add('hidden'); }
 
-        // OSINT TOGGLE
-        let osintEnabled = false;
-        function toggleOsint(btnElement) {
-            osintEnabled = !osintEnabled;
-            setToggleActive('osint-toggle', osintEnabled);
-
-            // OSINT режим не должен работать поверх аналитического скрытия.
-            if (osintEnabled) {
-                clearAnalyticFilter({ fit: false });
-                showAllNodesAndEdges();
-            } else {
-                // При выходе из OSINT возвращаем физику/позиции, если были активны layout-режимы.
-                disableLayouts();
-            }
-
-            const osintGroups = ['osint_ip', 'osint_domain', 'osint_email', 'osint_url', 'osint_asn', 'osint_misc'];
-            const allNodes = nodes.get();
-            const osintNodeIds = allNodes.filter(n => osintGroups.includes(n.group)).map(n => n.id);
-
-            if (osintEnabled) {
-                const updates = allNodes.map(n => {
-                    const isOsint = osintGroups.includes(n.group);
-                    if (isOsint) {
-                        return { id: n.id, color: { background: undefined, border: undefined }, size: undefined };
-                    }
-                    return {
-                        id: n.id,
-                        color: { background: 'rgba(100,100,100,0.02)', border: 'rgba(100,100,100,0.02)' },
-                        size: 2
-                    };
-                });
-                nodes.update(updates);
-
-                if (osintNodeIds.length > 0) {
-                    network.fit({ nodes: osintNodeIds, animation: { duration: 800, easingFunction: "easeInOutQuad" } });
-                }
-                return;
-            }
-
-            const updates = allNodes.map(n => ({
-                id: n.id,
-                color: { background: undefined, border: undefined },
-                size: undefined
-            }));
-            nodes.update(updates);
-            network.fit({ animation: { duration: 800, easingFunction: "easeInOutQuad" } });
-        }
-
-        // === PIVOT RADIAL LAYOUT ===
-        let pivotLayoutOn = false;
-
-        function isOsintNode(n) {
-            return (n.group || '').startsWith('osint_');
-        }
-        function isAnchor(n) {
-            return (n.info || '').toLowerCase().includes('anchor');
-        }
-        function isInfraHost(n) {
-            const lbl = (n.label || n.id || '').toLowerCase();
-            return lbl.startsWith('ns') || lbl.startsWith('mx') || lbl.startsWith('emx.') || lbl.startsWith('dns');
-        }
-
-        function placeRing(list, radius, startAngle, updates) {
-            const n = list.length || 1;
-            for (let i = 0; i < list.length; i++) {
-                const ang = startAngle + (2 * Math.PI * i) / n;
-                const x = Math.round(radius * Math.cos(ang));
-                const y = Math.round(radius * Math.sin(ang));
-                updates.push({ id: list[i].id, x, y, fixed: { x: true, y: true } });
-            }
-        }
-
-        function applyPivotRadialLayout() {
-            const os = nodes.get({ filter: n => isOsintNode(n) && !n.hidden });
-
-            const asn    = os.filter(n => n.group === 'osint_asn');
-            const ip     = os.filter(n => n.group === 'osint_ip');
-            const anchor = os.filter(n => isAnchor(n));
-            const infra  = os.filter(n => n.group === 'osint_domain' && !isAnchor(n) && isInfraHost(n));
-            const other  = os.filter(n =>
-                !asn.includes(n) && !ip.includes(n) && !anchor.includes(n) && !infra.includes(n)
-            );
-
-            const updates = [];
-
-            if (asn.length === 1) {
-                updates.push({ id: asn[0].id, x: 0, y: 0, fixed: { x: true, y: true } });
-            } else {
-                placeRing(asn, 45, 0, updates);
-            }
-
-            placeRing(ip,     150, 0.2, updates);
-            placeRing(infra,  240, 0.0, updates);
-            placeRing(other,  300, 0.1, updates);
-            placeRing(anchor, 380, 0.0, updates);
-
-            nodes.update(updates);
-            network.setOptions({ physics: { enabled: false } });
-            network.fit({ nodes: os.map(n => n.id), animation: { duration: 600, easingFunction: "easeInOutQuad" } });
-        }
-
-        function clearPivotRadialLayout() {
-            const os = nodes.get({ filter: n => isOsintNode(n) });
-            nodes.update(os.map(n => ({ id: n.id, fixed: false, x: undefined, y: undefined })));
-            network.setOptions({ physics: { enabled: true } });
-            network.stabilize(200);
-            network.fit({ animation: { duration: 600, easingFunction: "easeInOutQuad" } });
-        }
-
-        function togglePivotLayout(btn) {
-            if (!osintEnabled) toggleOsint(document.getElementById('osint-toggle'));
-            clearAnalyticFilter({ fit: false });
-
-            pivotLayoutOn = !pivotLayoutOn;
-            setToggleActive('pivot-toggle', pivotLayoutOn);
-
-            if (pivotLayoutOn) {
-                if (clusterOn) {
-                    clusterOn = false;
-                    setToggleActive('cluster-toggle', false);
-                    clearClusterLayout();
-                }
-                applyPivotRadialLayout();
-                return;
-            }
-            clearPivotRadialLayout();
-        }
-
-        // === CLUSTER LAYOUT (острова вокруг MX/NS) ===
-        let clusterOn = false;
-
-        // Центры кластеров: почта + Timeweb
-        const CLUSTER_CENTERS = ["mx.yandex.net", "emx.mail.ru", "ns1.timeweb.ru"];
-        const CENTER_POS = {
-            "mx.yandex.net":  { x: -260, y: 0 },
-            "emx.mail.ru":    { x:  260, y: 0 },
-            "ns1.timeweb.ru": { x:    0, y: -240 }
-        };
-
-        function getClusterForNode(nodeId) {
-            const allEdges = edges.get();
-            const connected = allEdges.filter(e =>
-                (e.from === nodeId || e.to === nodeId) &&
-                CLUSTER_CENTERS.includes(e.from === nodeId ? e.to : e.from)
-            );
-            if (connected.length > 0) {
-                const center = connected[0].from === nodeId ? connected[0].to : connected[0].from;
-                if (CLUSTER_CENTERS.includes(center)) return center;
-            }
-            if (CLUSTER_CENTERS.includes(nodeId)) return nodeId;
-            return null;
-        }
-
-        function applyClusterLayout() {
-            const os = nodes.get({ filter: n => isOsintNode(n) && !n.hidden });
-            const updates = [];
-
-            for (const centerId of CLUSTER_CENTERS) {
-                const centerNode = os.find(n => n.id === centerId);
-                if (centerNode && CENTER_POS[centerId]) {
-                    updates.push({
-                        id: centerId,
-                        x: CENTER_POS[centerId].x,
-                        y: CENTER_POS[centerId].y,
-                        fixed: { x: true, y: true },
-                        size: 25
-                    });
-                }
-            }
-
-            const clusters = { "mx.yandex.net": [], "emx.mail.ru": [], "ns1.timeweb.ru": [] };
-            for (const node of os) {
-                if (CLUSTER_CENTERS.includes(node.id)) continue;
-                const cluster = getClusterForNode(node.id);
-                if (cluster && clusters[cluster]) {
-                    clusters[cluster].push(node);
-                }
-            }
-
-            const radius = 120;
-            for (const [centerId, nodeList] of Object.entries(clusters)) {
-                if (nodeList.length === 0) continue;
-                const centerPos = CENTER_POS[centerId];
-                if (!centerPos) continue;
-
-                const startAngle = centerId === "mx.yandex.net" ? -Math.PI/2 :
-                                   centerId === "emx.mail.ru" ? Math.PI/2 : 0;
-
-                for (let i = 0; i < nodeList.length; i++) {
-                    const angle = startAngle + (2 * Math.PI * i) / nodeList.length;
-                    const x = Math.round(centerPos.x + radius * Math.cos(angle));
-                    const y = Math.round(centerPos.y + radius * Math.sin(angle));
-                    updates.push({
-                        id: nodeList[i].id,
-                        x, y,
-                        fixed: { x: true, y: true }
-                    });
-                }
-            }
-
-            nodes.update(updates);
-            network.setOptions({ physics: { enabled: false } });
-            network.fit({ animation: { duration: 600, easingFunction: "easeInOutQuad" } });
-        }
-
-        function clearClusterLayout() {
-            const os = nodes.get({ filter: n => isOsintNode(n) });
-            nodes.update(os.map(n => ({ id: n.id, fixed: false, x: undefined, y: undefined, size: undefined })));
-            network.setOptions({ physics: { enabled: true } });
-            network.stabilize(200);
-            network.fit({ animation: { duration: 600, easingFunction: "easeInOutQuad" } });
-        }
-
-        function toggleClusterLayout(btn) {
-            if (!osintEnabled) toggleOsint(document.getElementById('osint-toggle'));
-            clearAnalyticFilter({ fit: false });
-
-            clusterOn = !clusterOn;
-            setToggleActive('cluster-toggle', clusterOn);
-
-            if (clusterOn) {
-                if (pivotLayoutOn) {
-                    pivotLayoutOn = false;
-                    setToggleActive('pivot-toggle', false);
-                    clearPivotRadialLayout();
-                }
-                applyClusterLayout();
-                return;
-            }
-            clearClusterLayout();
-        }
-
+        network.on("click", e => e.nodes.length > 0 ? showNodeInfo(e.nodes[0]) : resetView());
     </script>
 </body>
 </html>
